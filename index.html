@@ -1,0 +1,41 @@
+
+	<head>
+		<title>Ski Maps</title>
+		<!-- Bootstrap Stuff -->
+		<!-- Latest compiled and minified CSS -->
+		<link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+		<!-- Optional theme -->
+		<link rel="stylesheet" href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css">
+		<!-- Latest compiled and minified JavaScript -->
+		<script src="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+		<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+   		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+
+		<!-- Leaflet Stuff -->
+		<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.css" />
+		<script src="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.js"></script>
+		<style>
+			#map { height: 280px; }	
+		</style>
+
+	</head>
+	<template name="template">
+		<div class="container">
+			<div class="span12">
+				<div id="map"></div><BR>
+				<div class="span2">
+					<form enctype="multipart/form-data" action="/upload/image" method="post">
+						<input type="file" style="display:none" id="file_upload" />
+						<button type="button" class="btn btn-default" id="loadBtn">Load GPX</button>
+						
+					</form>
+					<input type="filepicker" id="attachment">
+				</div>
+			</div>
+			<script type="text/javascript" src="//api.filepicker.io/v1/filepicker.js"></script>
+	 		<script>
+				
+			</script>
+		</div>
+
+	</template>
