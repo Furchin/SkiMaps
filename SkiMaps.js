@@ -1,5 +1,25 @@
 if (Meteor.isClient) {
 
+  var pickFile = function pickFile() {
+    filepicker.pick({
+      extension: '.gpx',
+      container: 'modal',
+      services:['COMPUTER', 'FACEBOOK', 'GMAIL'],
+    },
+    function onSuccess(inkBlob){
+      console.log(JSON.stringify(inkBlob));
+
+      console.log('Now reading inkBlob...');
+      filepicker.read(inkBlob, function(data){
+          console.log(data);
+      });
+    },
+    function onError(FPError){
+      console.log(FPError.toString());
+    }
+  );
+  }
+
   Meteor.startup( function initializeMap() {
     var map = L.map('map').setView([51.505, -0.09], 13);
     //L.tileLayer('http://a.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -10,9 +30,11 @@ if (Meteor.isClient) {
   });
 
   Meteor.startup( function initializeFilePicker() {
-    console.log('hi');
     filepicker.setKey("AlCrL69bBRFOX9cgnAJ0wz"); 
-    filepicker.constructWidget(document.getElementById('attachment'));
+  });
+
+  Meteor.startup( function hookupUploadButton() {
+    $('#uploadBtn').click(pickFile);
   });
 
   Template.map.events({
@@ -22,18 +44,7 @@ if (Meteor.isClient) {
 });
 
 /*
-  filepicker.pick({
-      mimetypes: ['image/*', 'text/plain'],
-      container: 'window',
-      services:['COMPUTER', 'FACEBOOK', 'GMAIL'],
-    },
-    function(InkBlob){
-      console.log(JSON.stringify(InkBlob));
-    },
-    function(FPError){
-      console.log(FPError.toString());
-    }
-  );
+  
 
   Templates.template.events({
     'change #attachment': function(evt){
