@@ -1,15 +1,21 @@
 if (Meteor.isClient) {
-  Template.hello.greeting = function () {
-    return "Welcome to SkiMaps.";
-  };
 
-  Meteor.startup( function() {
-    console.log('hi');
-    //filepicker.setKey("AlCrL69bBRFOX9cgnAJ0wz"); 
-    //filepicker.constructWidget(document.getElementById('attachment'));
+  Meteor.startup( function initializeMap() {
+    var map = L.map('map').setView([51.505, -0.09], 13);
+    //L.tileLayer('http://a.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    L.tileLayer('http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.png', {
+        attribution: 'Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a> <img src="http://developer.mapquest.com/content/osm/mq_logo.png">',
+        maxZoom: 18
+    }).addTo(map);
   });
 
-  Template.template.events({
+  Meteor.startup( function initializeFilePicker() {
+    console.log('hi');
+    filepicker.setKey("AlCrL69bBRFOX9cgnAJ0wz"); 
+    filepicker.constructWidget(document.getElementById('attachment'));
+  });
+
+  Template.map.events({
     'change #attachment': function(evt){
         console.log(evt.files);
     }
