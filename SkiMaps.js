@@ -10,15 +10,62 @@ if (Meteor.isClient) {
       console.log(JSON.stringify(inkBlob));
 
       console.log('Now reading inkBlob...');
-      filepicker.read(inkBlob, function(data){
-          console.log(data);
-      });
+      loadGpx(inkBlob);
+      
     },
     function onError(FPError){
       console.log(FPError.toString());
+    });
+  };
+
+  var loadGpx = function loadGpx(inkBlob) {
+    if (!inkBlob) {
+      console.log('inkBlob not provided; using default.');
+      inkBlob = {"url":"https://www.filepicker.io/api/file/toS3GQPXTpaSKKWrtGKX","filename":"WhistlerSkiing.gpx","mimetype":"application/octet-stream","size":763448,"isWriteable":true};
     }
-  );
-  }
+
+    filepicker.read(inkBlob, function(data){
+      processGpx(data);
+    });
+  };
+
+  var processGpx = function processGpx(gpxStr) {
+    console.log('Showing geoJSON...');
+    var gpxXml = $.parseXML(gpxStr);
+    var json = xmlToJson(gpxXml);
+    console.dir(json);
+
+    // Okay, that's been converted to json. Let's strip out all the stuff we don't need!
+    var points = [];
+    if (!_.isArray(json.gpx.trk)) {
+      json.gpx.trk = [json.gpx.trk];
+    }
+    _.each(json.gpx.trk, function processTrack(trk) {
+      if (!_.isArray(trk.trkseg)) {
+        trk.trkseg = [trk.trkseg];
+      }
+      _.each(trk.trkseg, function processSegment(seg) {
+        if (!_.isArray(seg.trkpt)) {
+          seg.trkpt = [seg.trkpt];
+        }
+        _.each(seg.trkpt, function processPoint(pt){
+          points.push({
+            time: pt.time['#text'],
+            elevation: pt.ele['#text'],
+            lat: pt['@attributes'].lat,
+            lon: pt['@attributes'].lon
+          })
+        });
+      });
+    });
+
+    // Sort the points by time
+    points = _.sortBy(points, function iterator(point){
+      return point.time;
+    });
+
+    console.dir(points);
+  };
 
   Meteor.startup( function initializeMap() {
     var map = L.map('map').setView([51.505, -0.09], 13);
@@ -34,7 +81,11 @@ if (Meteor.isClient) {
   });
 
   Meteor.startup( function hookupUploadButton() {
-    $('#uploadBtn').click(pickFile);
+    //$('#uploadBtn').click(pickFile);
+    // Temporarily skip the file upload, and just process a known good one.
+    $('#uploadBtn').click(function clickHandler(e) {
+      loadGpx();
+    });
   });
 
   Template.map.events({
