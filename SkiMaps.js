@@ -7,11 +7,8 @@ if (Meteor.isClient) {
       services:['COMPUTER', 'FACEBOOK', 'GMAIL'],
     },
     function onSuccess(inkBlob){
-      console.log(JSON.stringify(inkBlob));
-
       console.log('Now reading inkBlob...');
       loadGpx(inkBlob);
-      
     },
     function onError(FPError){
       console.log(FPError.toString());
@@ -29,11 +26,11 @@ if (Meteor.isClient) {
     });
   };
 
+  var find
+
   var processGpx = function processGpx(gpxStr) {
-    console.log('Showing geoJSON...');
     var gpxXml = $.parseXML(gpxStr);
     var json = xmlToJson(gpxXml);
-    console.dir(json);
 
     // Okay, that's been converted to json. Let's strip out all the stuff we don't need!
     var points = [];
@@ -51,9 +48,9 @@ if (Meteor.isClient) {
         _.each(seg.trkpt, function processPoint(pt){
           points.push({
             time: pt.time['#text'],
-            elevation: pt.ele['#text'],
+            altitude: pt.ele['#text'],
             lat: pt['@attributes'].lat,
-            lon: pt['@attributes'].lon
+            lng: pt['@attributes'].lon
           })
         });
       });
@@ -64,11 +61,43 @@ if (Meteor.isClient) {
       return point.time;
     });
 
-    console.dir(points);
+    // Zoom the map onto the first point with nice smooth animation.
+    // TODO: This isn't working. I don't know why.
+    /*
+    map.zoomIn(2, {duration: 10});
+    map.setView(points[0], {animate: 'true'});
+    */
+
+    // Move the map to show all the points
+    var options = {
+      paddingTopLeft: 0,
+      paddingBottomRight: 0,
+      pan: {
+        animate: true,
+        duration: 0.25,
+        easeLinearity: 0.25
+      },
+      zoom: {
+        animate: true
+      }
+    };
+    map.fitBounds(L.latLngBounds(points), options);
+
+    // Rudimentary drawing of all the points
+    var polyline = L.polyline(points, {color: 'red'}).addTo(map);
+
+    // Now we need to compute the individual runs and lift rides
+    var tracks = detectRuns(points);
+    console.log('Number of lift rides: ' + tracks.lifts.length);
+    console.log('Number of runs: ' + tracks.runs.length);
+
+    _.each(tracks.lifts, function iterator(lift) {
+      L.polyline(lift, {color: 'black'}).addTo(map);
+    })
   };
 
   Meteor.startup( function initializeMap() {
-    var map = L.map('map').setView([51.505, -0.09], 13);
+    map = L.map('map').setView([51.505, -0.09], 1);
     //L.tileLayer('http://a.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     L.tileLayer('http://otile1.mqcdn.com/tiles/1.0.0/map/{z}/{x}/{y}.png', {
         attribution: 'Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a> <img src="http://developer.mapquest.com/content/osm/mq_logo.png">',
@@ -87,12 +116,6 @@ if (Meteor.isClient) {
       loadGpx();
     });
   });
-
-  Template.map.events({
-    'change #attachment': function(evt){
-        console.log(evt.files);
-    }
-});
 
 /*
   
