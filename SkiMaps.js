@@ -84,16 +84,42 @@ if (Meteor.isClient) {
     map.fitBounds(L.latLngBounds(points), options);
 
     // Rudimentary drawing of all the points
-    var polyline = L.polyline(points, {color: 'red'}).addTo(map);
+    //var polyline = L.polyline(points, {color: 'red'}).addTo(map);
 
     // Now we need to compute the individual runs and lift rides
     var tracks = detectRuns(points);
-    console.log('Number of lift rides: ' + tracks.lifts.length);
-    console.log('Number of runs: ' + tracks.runs.length);
 
-    _.each(tracks.lifts, function iterator(lift) {
-      L.polyline(lift, {color: 'black'}).addTo(map);
-    })
+    // Combine short tracks with their neighbors.
+    for (var i = 0; i < tracks.length - 1; i++ ) {
+      if (tracks[i].type === tracks[i + 1].type) {
+        // combine identical adjacent tracks
+        _.each(tracks[i+1].points, function iterator(point) {
+          tracks[i].points.push(point);
+        });
+        // Remove tracks[i+1] from array
+        tracks.splice(i + 1, 1);
+      }
+
+
+      // If we have a short track -- less than 3 points, or less than 10% of the tracks around it, then merge it with tracks[i]. 
+      // Then tracks[i] and tracks of what is now i+2 will be merged in the next iteration
+      if (tracks[i+1].points.length < 3 || 
+        (tracks[i+1].points.length < 0.1 * tracks[i].points.length && (!tracks[i+2] || tracks[i+1].points.length < 0.1 * tracks[i+2].points.length))) {
+        _.each(tracks[i+1].points, function iterator(point) {
+          tracks[i].points.push(point);
+        });
+        tracks.splice(i + 1, 1);
+        i--; // Go back one track.
+      }
+    }
+
+    _.each(tracks, function iterator(track) {
+      if (track.type === 'LIFT') { 
+        L.polyline(track.points, {color: 'black'}).addTo(map);
+      } else {
+        L.polyline(track.points, {color: 'blue'}).addTo(map);
+      }
+    });
   };
 
   Meteor.startup( function initializeMap() {
