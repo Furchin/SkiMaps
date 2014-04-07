@@ -61,6 +61,17 @@ if (Meteor.isClient) {
       return point.time;
     });
 
+    // Compute a speed and heading for each point
+    points[0].speed = 0;
+    points[0].heading = 0;
+    for (var i=1; i < points.length; i++) {
+      var distance = L.latLng(points[i]).distanceTo(L.latLng(points[i-1]));
+      var elapsedTime = moment(points[i].time).diff(moment(points[i-1].time), 'seconds');
+      points[i].speed = distance / elapsedTime; // This is in meters per second
+
+      points[i].heading = L.LatLng.RAD_TO_DEG * computeHeading(points[i-1], points[i]);
+    }
+
     // Zoom the map onto the first point with nice smooth animation.
     // TODO: This isn't working. I don't know why.
     /*
@@ -103,7 +114,7 @@ if (Meteor.isClient) {
 
       // If we have a short track -- less than 3 points, or less than 10% of the tracks around it, then merge it with tracks[i]. 
       // Then tracks[i] and tracks of what is now i+2 will be merged in the next iteration
-      if (tracks[i+1].points.length < 3 || 
+      if (tracks[i+1].points.length < 4 || 
         (tracks[i+1].points.length < 0.1 * tracks[i].points.length && (!tracks[i+2] || tracks[i+1].points.length < 0.1 * tracks[i+2].points.length))) {
         _.each(tracks[i+1].points, function iterator(point) {
           tracks[i].points.push(point);
@@ -115,7 +126,14 @@ if (Meteor.isClient) {
 
     _.each(tracks, function iterator(track) {
       if (track.type === 'LIFT') { 
-        L.polyline(track.points, {color: 'black'}).addTo(map);
+        // For debugging purposes, print out any LIFT tracks which rise less than 100m.
+        if (track.points[track.points.length - 1].altitude - track.points[0].altitude < 100) {
+          console.log('The following LIFT was less than 100 meters: ');
+          console.dir(track);
+          L.polyline(track.points, {color: 'red'}).addTo(map);
+        } else {
+          L.polyline(track.points, {color: 'black'}).addTo(map);
+        }
       } else {
         L.polyline(track.points, {color: 'blue'}).addTo(map);
       }
