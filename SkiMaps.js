@@ -26,7 +26,20 @@ if (Meteor.isClient) {
     });
   };
 
-  var find
+  var combineAdjacentTracksOfSameType = function combineAdjacentTracksOfSameType(tracks) {
+    for (var i = 0; i < tracks.length - 1; i++ ) {
+      if (tracks[i].type === tracks[i + 1].type) {
+        // combine identical adjacent tracks
+        _.each(tracks[i+1].points, function iterator(point) {
+          tracks[i].points.push(point);
+        });
+        // Remove tracks[i+1] from array
+        tracks.splice(i + 1, 1);
+      }
+    }
+
+    return tracks;
+  }
 
   var processGpx = function processGpx(gpxStr) {
     var gpxXml = $.parseXML(gpxStr);
@@ -101,6 +114,8 @@ if (Meteor.isClient) {
     var tracks = detectRuns(points);
 
     // Combine short tracks with their neighbors.
+    tracks = combineAdjacentTracksOfSameType(tracks);
+
     for (var i = 0; i < tracks.length - 1; i++ ) {
       if (tracks[i].type === tracks[i + 1].type) {
         // combine identical adjacent tracks
@@ -111,11 +126,16 @@ if (Meteor.isClient) {
         tracks.splice(i + 1, 1);
       }
 
-
-      // If we have a short track -- less than 3 points, or less than 10% of the tracks around it, then merge it with tracks[i]. 
+      // If we have a short track -- less than 4 points, or less than 10% of the tracks around it, then merge it with tracks[i]. 
       // Then tracks[i] and tracks of what is now i+2 will be merged in the next iteration
+      var LENGTH_THRESHOLD = 0.1;
+      var numSurroundingPoints = tracks[i].points.length;
+      if (tracks[i+2]) {
+        numSurroundingPoints += tracks[i+2].points.length;
+      }
       if (tracks[i+1].points.length < 4 || 
-        (tracks[i+1].points.length < 0.1 * tracks[i].points.length && (!tracks[i+2] || tracks[i+1].points.length < 0.1 * tracks[i+2].points.length))) {
+        (tracks[i+1].points.length < LENGTH_THRESHOLD * tracks[i].points.length && (!tracks[i+2] || tracks[i+1].points.length < LENGTH_THRESHOLD * tracks[i+2].points.length))) {
+        //(tracks[i+1].points.length < LENGTH_THRESHOLD * numSurroundingPoints)) { // TODO: This line over-generously combines tracks, resulting in problems elsewhere in the code
         _.each(tracks[i+1].points, function iterator(point) {
           tracks[i].points.push(point);
         });
@@ -124,20 +144,56 @@ if (Meteor.isClient) {
       }
     }
 
-    _.each(tracks, function iterator(track) {
+    // Combine short tracks with their neighbors.
+    tracks = combineAdjacentTracksOfSameType(tracks);
+
+/*
+    // If a track is a LIFT, and has relatively similar bearing to either neighbor, we want to combine.
+    for (var i = 0; i < tracks.length - 1; i++) {
+      if (tracks[i].type === 'LIFT') {
+        var computeAvgHeading = function(points) {
+          _.reduce(points, function iterator(memo, point) {
+            return memo + point.heading;
+          }) / points.length;
+        };
+        var avgHeading = computeAvgHeading(track[i].points);
+
+        var maxHeadingDeviation = _.reduce(tracks[i].points, function iterator(memo, point) {
+          return Math.max(memo, Math.abs(avgHeading - point.heading));
+        });
+
+        var nextAvgHeading = computeAvgHeading(track[i+1].points);
+
+        if (maxHeadingDeviation < 7 && Math.abs(avgHeading - nextAvgHeading) < 3) {
+          // TODO: Merge, but only if adjacent track is also a LIFT.
+        }
+      }
+    }
+*/
+    var num = 0;
+    for (var i=0; i< tracks.length; i++) {
+      var track = tracks[i];
       if (track.type === 'LIFT') { 
         // For debugging purposes, print out any LIFT tracks which rise less than 100m.
         if (track.points[track.points.length - 1].altitude - track.points[0].altitude < 100) {
-          console.log('The following LIFT was less than 100 meters: ');
+          console.log('The following LIFT was less than 100 meters: ' + num);
+          console.log('Proceeding track num points: ' + (tracks[i-1] ? tracks[i-1].points.length : -1));
+          console.log('This track\'s points:' + tracks[i].points.length);
+          console.log('Proceeding track num points: ' + (tracks[i+1] ? tracks[i+1].points.length : -1));
           console.dir(track);
           L.polyline(track.points, {color: 'red'}).addTo(map);
+
+          L.marker(track.points[0], {
+            riseOnHover: true,
+            title: 'track ' + num++
+          }).addTo(map);
         } else {
           L.polyline(track.points, {color: 'black'}).addTo(map);
         }
       } else {
         L.polyline(track.points, {color: 'blue'}).addTo(map);
       }
-    });
+    };
   };
 
   Meteor.startup( function initializeMap() {
