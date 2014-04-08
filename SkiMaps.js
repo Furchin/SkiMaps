@@ -161,8 +161,6 @@ if (Meteor.isClient) {
       initialLength = tracks.length;
       tracks = combineTracks(tracks);
       finalLength = tracks.length;
-      console.log('initial length = ' + initialLength);
-      console.log('final length = ' + finalLength);
     } while (initialLength != finalLength);
 
 
@@ -196,6 +194,8 @@ if (Meteor.isClient) {
     }
 */
     var num = 0;
+    var runNum = 0;
+    var liftNum = 0;
     for (var i=0; i< tracks.length; i++) {
       var track = tracks[i];
       if (track.type === 'LIFT') { 
@@ -213,10 +213,21 @@ if (Meteor.isClient) {
             title: 'track ' + num++
           }).addTo(map);
         } else {
-          L.polyline(track.points, {color: 'black'}).addTo(map);
+          var popup = L.popup().setContent('Lift ' + ++liftNum + '<BR>Vertical: ' + Math.ceil(track.points[track.points.length - 1].altitude - track.points[0].altitude) + 'm');
+          L.polyline(track.points, {color: 'black'}).bindPopup(popup).addTo(map);
+
+
         }
       } else {
-        L.polyline(track.points, {color: 'blue'}).addTo(map);
+        var popup = L.popup().setContent('Run ' + ++runNum + '<BR>Vertical: ' + Math.ceil(track.points[0].altitude - track.points[track.points.length - 1].altitude) + 'm');
+        var lines = [];
+        for (var j = 1; j < track.points.length; j++){
+
+          lines.push(L.polyline([track.points[j-1], track.points[j]], {color: 'blue'}));
+        }
+        //L.polyline(track.points, {color: 'blue'});
+
+        L.featureGroup(lines).bindPopup(popup).addTo(map);
       }
     };
   };
