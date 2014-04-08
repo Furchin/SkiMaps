@@ -40,6 +40,46 @@ if (Meteor.isClient) {
 
     return tracks;
   }
+  var combineTracks = function combineTracks(tracks) {
+    for (var i = 0; i < tracks.length - 1; i++ ) {
+      if (tracks[i].type === tracks[i + 1].type) {
+        // combine identical adjacent tracks
+        _.each(tracks[i+1].points, function iterator(point) {
+          tracks[i].points.push(point);
+        });
+        // Remove tracks[i+1] from array
+        tracks.splice(i + 1, 1);
+      }
+
+      // If we have a short track -- less than 4 points, or less than 10% of the tracks around it, then merge it with tracks[i]. 
+      // Then tracks[i] and tracks of what is now i+2 will be merged in the next iteration
+      var LENGTH_THRESHOLD = 0.1;
+      var numSurroundingPoints = tracks[i].points.length;
+      if (tracks[i+2]) {
+        numSurroundingPoints += tracks[i+2].points.length;
+      }
+      if (tracks[i+1]) {
+        if (tracks[i+1].points.length < 4 || 
+          (tracks[i+1].points.length < LENGTH_THRESHOLD * tracks[i].points.length && (!tracks[i+2] || tracks[i+1].points.length < LENGTH_THRESHOLD * tracks[i+2].points.length)) ){//||
+          //(tracks[i+1].type === 'LIFT' && tracks[i+1].points[tracks[i+1].points.length - 1].altitude - tracks[i+1].points[0].altitude < 100)) {
+          //(tracks[i+1].points.length < LENGTH_THRESHOLD * numSurroundingPoints)) { // TODO: This line over-generously combines tracks, resulting in problems elsewhere in the code
+          _.each(tracks[i+1].points, function iterator(point) {
+            tracks[i].points.push(point);
+          });
+          tracks.splice(i + 1, 1);
+          i--; // Go back one track.
+        } else if (tracks[i+1].type === 'LIFT' && tracks[i+1].points[tracks[i+1].points.length - 1].altitude - tracks[i+1].points[0].altitude < 100) {
+          _.each(tracks[i+1].points, function iterator(point) {
+            tracks[i].points.push(point);
+          });
+          tracks.splice(i + 1, 1);
+          i--; // Go back one track.
+        }   
+      }     
+    }
+
+    return tracks;
+  }
 
   var processGpx = function processGpx(gpxStr) {
     var gpxXml = $.parseXML(gpxStr);
@@ -114,38 +154,23 @@ if (Meteor.isClient) {
     var tracks = detectRuns(points);
 
     // Combine short tracks with their neighbors.
-    tracks = combineAdjacentTracksOfSameType(tracks);
+    //tracks = combineAdjacentTracksOfSameType(tracks);
+    var initialLength;
+    var finalLength
+    do {
+      initialLength = tracks.length;
+      tracks = combineTracks(tracks);
+      finalLength = tracks.length;
+      console.log('initial length = ' + initialLength);
+      console.log('final length = ' + finalLength);
+    } while (initialLength != finalLength);
 
-    for (var i = 0; i < tracks.length - 1; i++ ) {
-      if (tracks[i].type === tracks[i + 1].type) {
-        // combine identical adjacent tracks
-        _.each(tracks[i+1].points, function iterator(point) {
-          tracks[i].points.push(point);
-        });
-        // Remove tracks[i+1] from array
-        tracks.splice(i + 1, 1);
-      }
-
-      // If we have a short track -- less than 4 points, or less than 10% of the tracks around it, then merge it with tracks[i]. 
-      // Then tracks[i] and tracks of what is now i+2 will be merged in the next iteration
-      var LENGTH_THRESHOLD = 0.1;
-      var numSurroundingPoints = tracks[i].points.length;
-      if (tracks[i+2]) {
-        numSurroundingPoints += tracks[i+2].points.length;
-      }
-      if (tracks[i+1].points.length < 4 || 
-        (tracks[i+1].points.length < LENGTH_THRESHOLD * tracks[i].points.length && (!tracks[i+2] || tracks[i+1].points.length < LENGTH_THRESHOLD * tracks[i+2].points.length))) {
-        //(tracks[i+1].points.length < LENGTH_THRESHOLD * numSurroundingPoints)) { // TODO: This line over-generously combines tracks, resulting in problems elsewhere in the code
-        _.each(tracks[i+1].points, function iterator(point) {
-          tracks[i].points.push(point);
-        });
-        tracks.splice(i + 1, 1);
-        i--; // Go back one track.
-      }
-    }
 
     // Combine short tracks with their neighbors.
-    tracks = combineAdjacentTracksOfSameType(tracks);
+    //tracks = combineAdjacentTracksOfSameType(tracks);
+
+    // Combine LIFTs of less than 100m in rise with their neighbors
+
 
 /*
     // If a track is a LIFT, and has relatively similar bearing to either neighbor, we want to combine.
