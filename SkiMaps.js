@@ -214,19 +214,33 @@ if (Meteor.isClient) {
           }).addTo(map);
         } else {
           var popup = L.popup().setContent('Lift ' + ++liftNum + '<BR>Vertical: ' + Math.ceil(track.points[track.points.length - 1].altitude - track.points[0].altitude) + 'm');
-          L.polyline(track.points, {color: 'black'}).bindPopup(popup).addTo(map);
+          L.polyline(track.points, {color: 'blue'}).bindPopup(popup).addTo(map);
 
 
         }
       } else {
         var popup = L.popup().setContent('Run ' + ++runNum + '<BR>Vertical: ' + Math.ceil(track.points[0].altitude - track.points[track.points.length - 1].altitude) + 'm');
         var lines = [];
+        var maxSpeed = _.reduce(track.points, function iterator(memo, point) { 
+          return Math.max(memo, point.speed);
+        }, 0);
         for (var j = 1; j < track.points.length; j++){
+          var speed = track.points[j].speed / maxSpeed;
 
-          lines.push(L.polyline([track.points[j-1], track.points[j]], {color: 'blue'}));
+          var color = Math.ceil(255 * Math.min(1, speed));
+          var colorCompontent = color.toString(16); // Convert to hex
+          var color = '#' + colorCompontent + colorCompontent + colorCompontent;
+          if (j==1) {
+            console.log('point speed = ' + track.points[j].speed);
+            console.log('max speed = ' + maxSpeed);
+            console.log('speed ratio = ' + speed);
+
+            console.log('color component in hex = ' + colorCompontent);
+            console.log('color = ' + color);
+          }
+          lines.push(L.polyline([track.points[j-1], track.points[j]], {color: color, opacity: 1}));
         }
         //L.polyline(track.points, {color: 'blue'});
-
         L.featureGroup(lines).bindPopup(popup).addTo(map);
       }
     };
